@@ -7,6 +7,8 @@ It has been adapted from code by todbot, ladyada, spikenzielabs, and mschaff (ar
 You'll need to grab the Serial-MIDI Converter from spikenzielabs.com */
 /************************************************************/
 
+#include <MIDI.h>
+
 #define HEELTHRESHOLD 450
 #define TOETHRESHOLD 350
 #define LOWERHEELTHRESHOLD 150
@@ -22,11 +24,14 @@ int pinNote[6] = {78,65,88,59,41,42};       // This array stores the different M
 boolean heel1 = false;
 boolean heel2 = false;
 boolean toe1 = false;
-boolean toe2 = false;                       //These variables will help us to make sure we don't send multiple MIDI messages per single hit        
+boolean toe2 = false;                       //These variables will help us to make sure we don't send multiple MIDI messages per single hit
+
+MIDI_CREATE_DEFAULT_INSTANCE();
 
 void setup(void) 
 {
-  Serial.begin(57600);                      // We'll send debugging information to the Serial monitor
+  MIDI.begin(MIDI_CHANNEL_OMNI);
+  Serial.begin(57600);
   pinMode(LEDpin, OUTPUT);
 }
 
@@ -40,22 +45,25 @@ void loop(void)
 }
 
 // This function sends a MIDI message with a message, pitch, and velocity
-void midimsg(unsigned char message, unsigned char pitch, unsigned char velocity) 
-{    
+void midimsg(unsigned char message, char sensor[], unsigned char pitch, unsigned char velocity) 
+{
+  // pitch, velocity, channel
+  MIDI.sendNoteOn(pitch, velocity, 1);
+  Serial.print(sensor + ": ");
   Serial.print(message);
   Serial.print(pitch);
   Serial.print(velocity);
+  Serial.println();
 }
 
 // This function is what does all the work
-boolean sender(int reading, int pin, int note, char msg[], boolean press, int threshold, int lowerthreshold ) 
+boolean sender(int reading, int pin, int pitch, char sensor[], boolean press, int threshold, int lowerthreshold) 
 {   
   if (reading >= threshold) {                 // If the user stomps harder than a certain threshold...
     if (!press) {                             // and if the sensor is not already in 'pressed' mode...
         reading = reading/8 - 1;              // convert the FSR reading to a MIDI-friendly value
         digitalWrite(LEDpin, HIGH);      
-        midimsg(144, note, reading);          // Send a MIDI message
-        Serial.println(msg);                  // Send a unique debug message to the Serial monitor
+        midimsg(144, sensor, pitch, reading);         // Send a MIDI message
         delay(30);
         digitalWrite(LEDpin, LOW);
     }  
